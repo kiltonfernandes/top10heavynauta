@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { StarryBackground } from "@/components/StarryBackground";
 import { useNavigate } from "react-router-dom";
-import logo from "@/assets/logo.jpg";
+import logo from "@/assets/logo.png";
 
 const Landing = () => {
   const navigate = useNavigate();

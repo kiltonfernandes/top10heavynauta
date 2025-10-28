@@ -33,7 +33,7 @@ const RankingReveal = () => {
       setTimeout(() => {
         setCurrentIndex(currentIndex + 1);
         setShowAnticipation(false);
-      }, 3000);
+      }, 9000);
     }
   };
 
