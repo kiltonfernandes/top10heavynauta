@@ -11,6 +11,7 @@ const RankingReveal = () => {
   const [rankedAlbums, setRankedAlbums] = useState<RankedAlbum[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showComments, setShowComments] = useState(false);
+  const [showAnticipation, setShowAnticipation] = useState(true);
 
   useEffect(() => {
     const saved = localStorage.getItem("rankedAlbums");
@@ -27,9 +28,17 @@ const RankingReveal = () => {
 
   const handleNext = () => {
     if (currentIndex < rankedAlbums.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      setShowAnticipation(true);
       setShowComments(false);
+      setTimeout(() => {
+        setCurrentIndex(currentIndex + 1);
+        setShowAnticipation(false);
+      }, 3000);
     }
+  };
+
+  const handleReveal = () => {
+    setShowAnticipation(false);
   };
 
   const handleFinish = () => {
@@ -47,6 +56,32 @@ const RankingReveal = () => {
     if (position === 3) return "text-amber-600";
     return "text-muted-foreground";
   };
+
+  if (showAnticipation && currentIndex > 0) {
+    return (
+      <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center">
+        <StarryBackground />
+        
+        <div className="relative z-10 text-center space-y-8 animate-pulse">
+          <div className="flex justify-center">
+            <Trophy className="w-32 h-32 text-primary animate-float" />
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold bg-gradient-cosmic bg-clip-text text-transparent">
+            Revelando...
+          </h1>
+          <p className="text-2xl text-muted-foreground">
+            Próximo disco: #{position}
+          </p>
+          <Button
+            onClick={handleReveal}
+            className="bg-gradient-cosmic text-xl px-8 py-6 animate-scale-in"
+          >
+            Revelar Agora
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
