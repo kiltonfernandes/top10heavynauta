@@ -72,7 +72,23 @@ const InsertAlbum = () => {
     }
   };
 
-  const scoreEmojis = ["", "😐", "🙂", "😊", "😃", "🤩"];
+  const likeEmojis = ["", "😑", "🙂", "😌", "😃", "🤩"];
+  const likeDescriptions = [
+    "Pouco gostei: Achei mediano ou desinteressante; não ouviria novamente.",
+    "Gostei um pouco: Tem alguns momentos bons, mas deixa a desejar no geral.",
+    "Gosto médio: Bom disco, escutaria ocasionalmente, mas não marcou.",
+    "Gostei bastante: Disco muito bom, escutei várias vezes e recomendo.",
+    "Amei: Um dos melhores do ano, marcante, entrou para minha lista pessoal."
+  ];
+  
+  const originalityEmojis = ["", "💤", "💿", "✨", "🤔", "🧬"];
+  const originalityDescriptions = [
+    "Nada original: Genérico, segue totalmente padrões do gênero, sem inovação.",
+    "Pouco original: Tem pequenos diferenciais, mas é majoritariamente convencional.",
+    "Originalidade média: Algumas faixas ou características se destacam; traz algo novo, mas não revoluciona.",
+    "Bastante original: Apresenta ideias ou misturas incomuns, surpreende pela criatividade.",
+    "Muito original: Um disco único, impossível de confundir; inovador e fora da curva."
+  ];
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -120,7 +136,7 @@ const InsertAlbum = () => {
                   <SelectContent className="bg-popover">
                     {[1, 2, 3, 4, 5].map((score) => (
                       <SelectItem key={score} value={score.toString()}>
-                        {score} {scoreEmojis[score]} - {["Não gostei", "Fraco", "Bom", "Muito bom", "Excelente"][score - 1]}
+                        {score} {likeEmojis[score]} - {likeDescriptions[score - 1]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -139,7 +155,7 @@ const InsertAlbum = () => {
                   <SelectContent className="bg-popover">
                     {[1, 2, 3, 4, 5].map((score) => (
                       <SelectItem key={score} value={score.toString()}>
-                        {score} <Star className="inline w-4 h-4" /> - {["Nada original", "Pouco original", "Original", "Muito original", "Revolucionário"][score - 1]}
+                        {score} {originalityEmojis[score]} - {originalityDescriptions[score - 1]}
                       </SelectItem>
                     ))}
                   </SelectContent>
