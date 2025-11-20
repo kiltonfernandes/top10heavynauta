@@ -71,6 +71,7 @@ const QUOTES: Quote[] = [
 
 const RankingReveal = () => {
   const navigate = useNavigate();
+  const [allAlbums, setAllAlbums] = useState<RankedAlbum[]>([]);
   const [rankedAlbums, setRankedAlbums] = useState<RankedAlbum[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showComments, setShowComments] = useState(false);
@@ -81,7 +82,10 @@ const RankingReveal = () => {
   useEffect(() => {
     const saved = localStorage.getItem("rankedAlbums");
     if (saved) {
-      setRankedAlbums(JSON.parse(saved));
+      const allAlbumsData = JSON.parse(saved);
+      setAllAlbums(allAlbumsData);
+      // Only show top 10 in ranking
+      setRankedAlbums(allAlbumsData.slice(0, 10));
       // Select random quote for first album
       const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
       setCurrentQuote(randomQuote);
@@ -123,7 +127,7 @@ const RankingReveal = () => {
   };
 
   const handleFinish = () => {
-    navigate("/statistics", { state: { rankedAlbums } });
+    navigate("/statistics", { state: { rankedAlbums: allAlbums } });
   };
 
   if (!currentAlbum) {
