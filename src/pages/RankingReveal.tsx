@@ -123,8 +123,7 @@ const RankingReveal = () => {
   };
 
   const handleFinish = () => {
-    localStorage.removeItem("rankedAlbums");
-    navigate("/choice");
+    navigate("/statistics", { state: { rankedAlbums } });
   };
 
   if (!currentAlbum) {
