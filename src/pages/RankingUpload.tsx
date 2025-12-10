@@ -98,18 +98,70 @@ const RankingUpload = () => {
         return acc;
       }, {});
 
+      // Advanced scoring algorithm with weights and penalties
+      const calculateAdvancedScore = (scores: { like: number; originality: number }[]) => {
+        const avgLike = scores.reduce((sum, s) => sum + s.like, 0) / scores.length;
+        const avgOriginality = scores.reduce((sum, s) => sum + s.originality, 0) / scores.length;
+        
+        // Weights: Originality is worth more (1.4x) than Like (1.0x)
+        const ORIGINALITY_WEIGHT = 1.4;
+        const LIKE_WEIGHT = 1.0;
+        
+        // Weighted base score
+        const weightedScore = (avgLike * LIKE_WEIGHT + avgOriginality * ORIGINALITY_WEIGHT) / (LIKE_WEIGHT + ORIGINALITY_WEIGHT);
+        
+        // Penalty for low quality scores (exponential penalty below 3)
+        // A score of 1 gets severe penalty, 2 gets moderate, 3+ no penalty
+        let qualityPenalty = 0;
+        if (avgLike < 3) {
+          qualityPenalty = Math.pow(3 - avgLike, 1.5) * 0.15; // Exponential penalty
+        }
+        
+        // Bonus for high originality (scores 4-5 get a small boost)
+        let originalityBonus = 0;
+        if (avgOriginality >= 4) {
+          originalityBonus = (avgOriginality - 3.5) * 0.08;
+        }
+        
+        // Consistency bonus: lower variance among reviewers = small bonus
+        const likeVariance = scores.length > 1 
+          ? scores.reduce((sum, s) => sum + Math.pow(s.like - avgLike, 2), 0) / scores.length 
+          : 0;
+        const origVariance = scores.length > 1 
+          ? scores.reduce((sum, s) => sum + Math.pow(s.originality - avgOriginality, 2), 0) / scores.length 
+          : 0;
+        const avgVariance = (likeVariance + origVariance) / 2;
+        const consistencyBonus = Math.max(0, (2 - avgVariance) * 0.03); // Low variance = bonus
+        
+        // Synergy bonus: albums that score well in BOTH dimensions get extra points
+        let synergyBonus = 0;
+        if (avgLike >= 3.5 && avgOriginality >= 3.5) {
+          synergyBonus = (avgLike - 3) * (avgOriginality - 3) * 0.04;
+        }
+        
+        // Calculate final score with all modifiers
+        const finalScore = Math.max(0, weightedScore - qualityPenalty + originalityBonus + consistencyBonus + synergyBonus);
+        
+        // Add micro-variation based on originality to break ties (6 decimal precision)
+        const tiebreaker = avgOriginality * 0.0001 + avgLike * 0.00001;
+        
+        return {
+          avgLike,
+          avgOriginality,
+          finalScore: finalScore + tiebreaker
+        };
+      };
+
       // Calculate averages and final scores
       const rankedAlbums: RankedAlbum[] = Object.values(grouped).map((item: any) => {
-        const avgLike = item.scores.reduce((sum: number, s: any) => sum + s.like, 0) / item.scores.length;
-        const avgOriginality = item.scores.reduce((sum: number, s: any) => sum + s.originality, 0) / item.scores.length;
-        const finalScore = (avgLike + avgOriginality) / 2;
+        const { avgLike, avgOriginality, finalScore } = calculateAdvancedScore(item.scores);
 
         return {
           band: item.band,
           album: item.album,
-          averageLike: Math.round(avgLike * 10) / 10,
-          averageOriginality: Math.round(avgOriginality * 10) / 10,
-          finalScore: Math.round(finalScore * 10) / 10,
+          averageLike: Math.round(avgLike * 100) / 100,
+          averageOriginality: Math.round(avgOriginality * 100) / 100,
+          finalScore: Math.round(finalScore * 1000) / 1000, // 3 decimal precision for display
           comments: item.comments,
         };
       });
