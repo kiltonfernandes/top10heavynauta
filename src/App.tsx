@@ -10,6 +10,7 @@ import InsertAlbum from "./pages/InsertAlbum";
 import ConfirmAlbums from "./pages/ConfirmAlbums";
 import RankingUpload from "./pages/RankingUpload";
 import RankingReveal from "./pages/RankingReveal";
+import FinalSummary from "./pages/FinalSummary";
 import Statistics from "./pages/Statistics";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/insert/confirm" element={<ConfirmAlbums />} />
           <Route path="/ranking" element={<RankingUpload />} />
           <Route path="/ranking/reveal" element={<RankingReveal />} />
+          <Route path="/summary" element={<FinalSummary />} />
           <Route path="/statistics" element={<Statistics />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
