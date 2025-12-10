@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { StarryBackground } from "@/components/StarryBackground";
 import { useNavigate } from "react-router-dom";
 import { RankedAlbum } from "@/types/album";
-import { Trophy, Star, ThumbsUp } from "lucide-react";
+import { Trophy, Star, ThumbsUp, Award } from "lucide-react";
 
 interface Quote {
   text: string;
@@ -69,60 +69,118 @@ const QUOTES: Quote[] = [
   { text: "Caught in a web, we're tangled up and lost", author: "James LaBrie", song: "Caught in a Web", album: "Awake", band: "Dream Theater", year: 1994 }
 ];
 
+// Algorithm to create balanced batches for honorable mentions
+const createBatches = (items: RankedAlbum[]): RankedAlbum[][] => {
+  if (items.length === 0) return [];
+  if (items.length <= 4) return [items]; // Single batch for small numbers
+  
+  // Calculate ideal batch size (target 3-5 items per batch)
+  const idealBatchSize = items.length <= 10 ? 3 : 
+                         items.length <= 20 ? 4 : 
+                         items.length <= 50 ? 5 : 6;
+  
+  const numBatches = Math.ceil(items.length / idealBatchSize);
+  const baseSize = Math.floor(items.length / numBatches);
+  const remainder = items.length % numBatches;
+  
+  const batches: RankedAlbum[][] = [];
+  let currentIndex = 0;
+  
+  for (let i = 0; i < numBatches; i++) {
+    // Distribute remainder across first batches
+    const batchSize = baseSize + (i < remainder ? 1 : 0);
+    batches.push(items.slice(currentIndex, currentIndex + batchSize));
+    currentIndex += batchSize;
+  }
+  
+  return batches;
+};
+
+type Phase = 'honorable-intro' | 'honorable-batch' | 'top10-quote' | 'top10-album';
+
 const RankingReveal = () => {
   const navigate = useNavigate();
   const [allAlbums, setAllAlbums] = useState<RankedAlbum[]>([]);
-  const [rankedAlbums, setRankedAlbums] = useState<RankedAlbum[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [top10Albums, setTop10Albums] = useState<RankedAlbum[]>([]);
+  const [honorableMentions, setHonorableMentions] = useState<RankedAlbum[]>([]);
+  const [honorableBatches, setHonorableBatches] = useState<RankedAlbum[][]>([]);
+  
+  const [phase, setPhase] = useState<Phase>('honorable-intro');
+  const [honorableBatchIndex, setHonorableBatchIndex] = useState(0);
+  const [top10Index, setTop10Index] = useState(0);
+  
   const [showComments, setShowComments] = useState(false);
-  const [showQuote, setShowQuote] = useState(true);
   const [currentQuote, setCurrentQuote] = useState<Quote>(QUOTES[0]);
   const [countdown, setCountdown] = useState(10);
 
   useEffect(() => {
     const saved = localStorage.getItem("rankedAlbums");
     if (saved) {
-      const allAlbumsData = JSON.parse(saved);
+      const allAlbumsData: RankedAlbum[] = JSON.parse(saved);
       setAllAlbums(allAlbumsData);
-      // Only show top 10 in ranking
-      setRankedAlbums(allAlbumsData.slice(0, 10));
-      // Select random quote for first album
-      const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-      setCurrentQuote(randomQuote);
+      
+      // Split into top 10 and honorable mentions
+      const top10 = allAlbumsData.slice(0, 10);
+      const mentions = allAlbumsData.slice(10);
+      
+      setTop10Albums(top10);
+      setHonorableMentions(mentions);
+      
+      // Create batches for honorable mentions (reverse order - worst first)
+      const batches = createBatches([...mentions].reverse());
+      setHonorableBatches(batches);
+      
+      // Determine starting phase
+      if (mentions.length > 0) {
+        setPhase('honorable-intro');
+      } else {
+        setPhase('top10-quote');
+        const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+        setCurrentQuote(randomQuote);
+      }
     } else {
       navigate("/ranking");
     }
   }, [navigate]);
 
-  // Countdown timer effect
+  // Countdown timer for top10-quote phase
   useEffect(() => {
-    if (showQuote && countdown > 0) {
+    if (phase === 'top10-quote' && countdown > 0) {
       const timer = setTimeout(() => {
         setCountdown(countdown - 1);
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (showQuote && countdown === 0) {
-      // When countdown reaches 0, hide quote and show album
+    } else if (phase === 'top10-quote' && countdown === 0) {
       setTimeout(() => {
-        setShowQuote(false);
+        setPhase('top10-album');
       }, 1000);
     }
-  }, [showQuote, countdown]);
+  }, [phase, countdown]);
 
-  const currentAlbum = rankedAlbums[currentIndex];
-  const position = rankedAlbums.length - currentIndex;
-  const isLast = currentIndex === rankedAlbums.length - 1;
+  const handleStartHonorableMentions = () => {
+    setPhase('honorable-batch');
+  };
 
-  const handleNext = () => {
-    if (currentIndex < rankedAlbums.length - 1) {
-      setShowComments(false);
-      setShowQuote(true);
+  const handleNextHonorableBatch = () => {
+    if (honorableBatchIndex < honorableBatches.length - 1) {
+      setHonorableBatchIndex(honorableBatchIndex + 1);
+    } else {
+      // Move to top 10
+      setPhase('top10-quote');
       setCountdown(10);
-      // Select random quote
       const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
       setCurrentQuote(randomQuote);
-      // Update index after quote is shown
-      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const handleNextTop10 = () => {
+    if (top10Index < top10Albums.length - 1) {
+      setShowComments(false);
+      setPhase('top10-quote');
+      setCountdown(10);
+      const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+      setCurrentQuote(randomQuote);
+      setTop10Index(top10Index + 1);
     }
   };
 
@@ -130,18 +188,132 @@ const RankingReveal = () => {
     navigate("/statistics", { state: { rankedAlbums: allAlbums } });
   };
 
-  if (!currentAlbum) {
-    return null;
+  // Render honorable mentions intro screen
+  if (phase === 'honorable-intro' && honorableMentions.length > 0) {
+    return (
+      <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center p-4">
+        <StarryBackground />
+        
+        <div className="relative z-10 max-w-4xl mx-auto text-center space-y-8">
+          <Award className="w-24 h-24 mx-auto text-amber-500 animate-float" />
+          
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-flame bg-clip-text text-transparent">
+            Menções Honrosas
+          </h1>
+          
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Antes de revelarmos o Top 10, vamos reconhecer os álbuns que também merecem destaque!
+          </p>
+          
+          <Card className="p-6 bg-card/80 backdrop-blur-sm border-2 border-amber-500/30">
+            <p className="text-2xl font-bold text-foreground mb-2">
+              {honorableMentions.length} álbuns
+            </p>
+            <p className="text-muted-foreground">
+              Serão apresentados em {honorableBatches.length} grupo{honorableBatches.length > 1 ? 's' : ''}
+            </p>
+          </Card>
+          
+          <Button 
+            onClick={handleStartHonorableMentions}
+            className="bg-gradient-flame text-xl py-6 px-12"
+          >
+            Começar
+          </Button>
+        </div>
+      </div>
+    );
   }
 
-  const getTrophyColor = () => {
-    if (position === 1) return "text-yellow-400";
-    if (position === 2) return "text-gray-300";
-    if (position === 3) return "text-amber-600";
-    return "text-muted-foreground";
-  };
+  // Render honorable mentions batch
+  if (phase === 'honorable-batch' && honorableBatches.length > 0) {
+    const currentBatch = honorableBatches[honorableBatchIndex];
+    const isLastBatch = honorableBatchIndex === honorableBatches.length - 1;
+    
+    return (
+      <div className="min-h-screen bg-background relative overflow-hidden">
+        <StarryBackground />
+        
+        <div className="relative z-10 container mx-auto px-4 py-8">
+          <div className="max-w-5xl mx-auto space-y-6">
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <Award className="w-12 h-12 text-amber-500" />
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-flame bg-clip-text text-transparent mb-2">
+                Menções Honrosas
+              </h1>
+              <p className="text-muted-foreground">
+                Grupo {honorableBatchIndex + 1} de {honorableBatches.length}
+              </p>
+            </div>
 
-  if (showQuote) {
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {currentBatch.map((album, index) => {
+                // Calculate the actual position (reverse from mentions array)
+                const mentionIndex = honorableBatches
+                  .slice(0, honorableBatchIndex)
+                  .reduce((acc, batch) => acc + batch.length, 0) + index;
+                const actualPosition = allAlbums.length - mentionIndex;
+                
+                return (
+                  <Card 
+                    key={`${album.band}-${album.album}`}
+                    className="p-6 bg-card/50 backdrop-blur-sm border-2 border-amber-500/30 animate-scale-in"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <div className="text-center mb-4">
+                      <span className="text-sm text-amber-500 font-bold">#{actualPosition}</span>
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-foreground mb-1 text-center">
+                      {album.band}
+                    </h3>
+                    <p className="text-muted-foreground text-center mb-4">
+                      {album.album}
+                    </p>
+                    
+                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                      <div className="p-2 bg-muted/30 rounded">
+                        <ThumbsUp className="w-4 h-4 mx-auto mb-1 text-secondary" />
+                        <span>{album.averageLike}</span>
+                      </div>
+                      <div className="p-2 bg-muted/30 rounded">
+                        <Star className="w-4 h-4 mx-auto mb-1 text-accent" />
+                        <span>{album.averageOriginality}</span>
+                      </div>
+                      <div className="p-2 bg-primary/20 rounded">
+                        <span className="text-xs text-muted-foreground">Final</span>
+                        <p className="font-bold">{album.finalScore}</p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-center pt-6">
+              <Button 
+                onClick={handleNextHonorableBatch}
+                className={isLastBatch ? "bg-gradient-cosmic text-xl py-6 px-12" : "bg-gradient-flame text-xl py-6 px-12"}
+              >
+                {isLastBatch ? "Ir para o Top 10" : "Próximo Grupo"}
+              </Button>
+            </div>
+            
+            <div className="text-center text-sm text-muted-foreground">
+              {honorableBatchIndex + 1} de {honorableBatches.length} grupos
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render quote screen before top 10 album
+  if (phase === 'top10-quote') {
+    const position = top10Albums.length - top10Index;
+    
     return (
       <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center p-4">
         <StarryBackground />
@@ -178,6 +350,20 @@ const RankingReveal = () => {
     );
   }
 
+  // Render top 10 album
+  const currentAlbum = top10Albums[top10Index];
+  if (!currentAlbum) return null;
+  
+  const position = top10Albums.length - top10Index;
+  const isLast = top10Index === top10Albums.length - 1;
+
+  const getTrophyColor = () => {
+    if (position === 1) return "text-yellow-400";
+    if (position === 2) return "text-gray-300";
+    if (position === 3) return "text-amber-600";
+    return "text-muted-foreground";
+  };
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       <StarryBackground />
@@ -192,7 +378,7 @@ const RankingReveal = () => {
               #{position}
             </h1>
             <p className="text-muted-foreground">
-              de {rankedAlbums.length} álbuns
+              de {top10Albums.length} álbuns no Top 10
             </p>
           </div>
 
@@ -255,7 +441,7 @@ const RankingReveal = () => {
           <div className="flex gap-4">
             {!isLast ? (
               <Button 
-                onClick={handleNext}
+                onClick={handleNextTop10}
                 className="w-full bg-gradient-cosmic text-xl py-6"
               >
                 Próximo Álbum
@@ -265,13 +451,13 @@ const RankingReveal = () => {
                 onClick={handleFinish}
                 className="w-full bg-gradient-flame text-xl py-6"
               >
-                Finalizar
+                Ver Estatísticas
               </Button>
             )}
           </div>
 
           <div className="text-center text-sm text-muted-foreground">
-            Revelado: {currentIndex + 1} de {rankedAlbums.length}
+            Revelado: {top10Index + 1} de {top10Albums.length}
           </div>
         </div>
       </div>
