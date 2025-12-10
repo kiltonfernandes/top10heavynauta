@@ -185,7 +185,7 @@ const RankingReveal = () => {
   };
 
   const handleFinish = () => {
-    navigate("/statistics", { state: { rankedAlbums: allAlbums } });
+    navigate("/summary", { state: { rankedAlbums: allAlbums } });
   };
 
   // Render honorable mentions intro screen
